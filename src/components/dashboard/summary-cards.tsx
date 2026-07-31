@@ -7,9 +7,9 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import type { PeriodSummary } from '@/db/queries'
 import { formatAmount, formatSignedAmount } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { PeriodSummary } from '@/services/DBService'
 
 function SummaryCard({
   label,

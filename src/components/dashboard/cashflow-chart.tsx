@@ -10,8 +10,8 @@ import {
   ChartTooltipContent,
   type ChartConfig
 } from '@/components/ui/chart'
-import type { DailyFlow } from '@/db/queries'
 import { formatAmount, formatCompactAmount, formatShortDate } from '@/lib/format'
+import type { DailyFlow } from '@/services/DBService'
 
 const chartConfig = {
   credits: { label: 'Entrées', color: 'var(--color-credit)' },

@@ -1,14 +1,14 @@
 import { CsvUploader } from '@/components/csv-uploader'
 import { ResetDatabaseButton } from '@/components/reset-database-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { getDatasetInfo } from '@/db/queries'
 import { formatLongDate } from '@/lib/format'
+import { dbService } from '@/services/DBService'
 
 // Le récapitulatif dépend du contenu de la base : jamais de version prérendue.
 export const dynamic = 'force-dynamic'
 
 export default async function ImportPage() {
-  const dataset = await getDatasetInfo()
+  const dataset = await dbService.getDatasetInfo()
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-8">

@@ -1,20 +1,12 @@
 import { AppHeader } from '@/components/app-header'
 import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono, JetBrains_Mono } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import '../styles/globals.css'
 
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin']
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin']
-})
 
 export const metadata: Metadata = {
   title: 'Dashboard finances',
@@ -32,13 +24,13 @@ export default function RootLayout({
       className={cn(
         'h-full',
         'antialiased',
-        geistSans.variable,
-        geistMono.variable,
+        inter.variable,
+        jetbrainsMono.variable,
         'font-mono',
-        jetbrainsMono.variable
+        'dark'
       )}
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <AppHeader />
         {children}
       </body>

@@ -10,9 +10,9 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import type { SortColumn, SortDirection, TransactionPage } from '@/db/queries'
 import { formatShortDate, formatSignedAmount } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { SortColumn, SortDirection, TransactionPage } from '@/services/DBService'
 
 export function TransactionsTable({
   result,

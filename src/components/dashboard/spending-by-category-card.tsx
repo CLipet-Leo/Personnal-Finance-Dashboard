@@ -20,8 +20,8 @@ import {
   type ChartConfig
 } from '@/components/ui/chart'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import type { CategoryBreakdown } from '@/db/queries'
 import { formatAmount, formatCompactAmount } from '@/lib/format'
+import type { CategoryBreakdown } from '@/services/DBService'
 
 const chartConfig = {
   total: { label: 'Dépenses', color: 'var(--color-debit)' }

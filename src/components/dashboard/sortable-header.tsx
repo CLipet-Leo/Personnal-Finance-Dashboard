@@ -4,9 +4,9 @@ import { ArrowDownIcon, ArrowUpIcon, ArrowsDownUpIcon } from '@phosphor-icons/re
 
 import { Button } from '@/components/ui/button'
 import { TableHead } from '@/components/ui/table'
-import type { SortColumn, SortDirection } from '@/db/queries'
 import { useQueryParams } from '@/hooks/use-query-params'
 import { cn } from '@/lib/utils'
+import type { SortColumn, SortDirection } from '@/services/DBService'
 
 export function SortableHeader({
   column,

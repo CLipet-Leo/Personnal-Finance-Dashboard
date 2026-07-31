@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import type { FilterOptions, ReconciledFilter } from '@/db/queries'
 import { useQueryParams } from '@/hooks/use-query-params'
+import type { FilterOptions, ReconciledFilter } from '@/services/DBService'
 
 const STATUS_ITEMS = [
   { label: 'Tous les statuts', value: null },

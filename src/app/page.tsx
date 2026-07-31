@@ -17,20 +17,15 @@ import {
   EmptyMedia,
   EmptyTitle
 } from '@/components/ui/empty'
+import { formatLongDate } from '@/lib/format'
+import { resolvePeriod, searchParamsFrom } from '@/lib/period'
 import {
-  getDailyFlow,
-  getDatasetInfo,
-  getFilterOptions,
-  getPeriodSummary,
-  getSpendingBreakdown,
-  getTransactions,
+  dbService,
   SORT_COLUMNS,
   type ReconciledFilter,
   type SortColumn,
   type SortDirection
-} from '@/db/queries'
-import { formatLongDate } from '@/lib/format'
-import { resolvePeriod, searchParamsFrom } from '@/lib/period'
+} from '@/services/DBService'
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -48,7 +43,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const params = searchParamsFrom(await searchParams)
   const { preset, range } = resolvePeriod(params)
 
-  const dataset = await getDatasetInfo()
+  const dataset = await dbService.getDatasetInfo()
 
   if (dataset.total === 0) {
     return (
@@ -82,11 +77,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const page = Number(params.get('page')) || 1
 
   const [summary, dailyFlow, breakdown, filterOptions, transactions] = await Promise.all([
-    getPeriodSummary(range),
-    getDailyFlow(range),
-    getSpendingBreakdown(range),
-    getFilterOptions(),
-    getTransactions({ range, search, category, subcategory, status, sort, dir, page })
+    dbService.getPeriodSummary(range),
+    dbService.getDailyFlow(range),
+    dbService.getSpendingBreakdown(range),
+    dbService.getFilterOptions(),
+    dbService.getTransactions({ range, search, category, subcategory, status, sort, dir, page })
   ])
 
   return (

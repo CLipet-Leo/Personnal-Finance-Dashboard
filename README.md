@@ -86,16 +86,15 @@ src/
     ui/                   Composants shadcn/ui
   db/
     schema.ts             Schéma Drizzle
-    queries.ts            Toutes les requêtes SQL agrégées
   drizzle/                Migrations générées
   hooks/                  Synchronisation des filtres avec l'URL
   lib/                    Période, formats fr-FR, utilitaires
-  services/               Parsing CSV
+  services/               Requêtes SQL agrégées et parsing CSV
 scripts/                  Import et reset en ligne de commande
 data/                     Base SQLite et relevés (non versionnés)
 ```
 
-Toutes les agrégations (`sum`, `group by`, `count`, pagination) sont faites en SQL dans `src/db/queries.ts` — aucun recalcul côté client.
+Toutes les agrégations (`sum`, `group by`, `count`, pagination) sont faites en SQL dans `src/services/DBService.ts` — aucun recalcul côté client.
 
 ## Déploiement
 
