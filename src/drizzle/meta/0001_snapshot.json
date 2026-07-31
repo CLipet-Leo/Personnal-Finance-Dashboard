@@ -109,9 +109,7 @@
       "indexes": {
         "transactions_fingerprint_unique": {
           "name": "transactions_fingerprint_unique",
-          "columns": [
-            "fingerprint"
-          ],
+          "columns": ["fingerprint"],
           "isUnique": true
         }
       },
