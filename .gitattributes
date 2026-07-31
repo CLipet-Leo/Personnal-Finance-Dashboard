@@ -1,0 +1,27 @@
+# Normalise les fins de ligne : LF dans le dépôt, natif dans le working tree.
+* text=auto eol=lf
+
+# Scripts dont le shell impose la fin de ligne.
+*.sh   text eol=lf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Fichiers binaires : ni diff ni normalisation.
+*.db     binary
+*.db-shm binary
+*.db-wal binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.woff   binary
+*.woff2  binary
+*.pdf    binary
+
+# Généré : exclu des diffs et des statistiques de langage GitHub.
+pnpm-lock.yaml     -diff linguist-generated
+src/drizzle/meta/** -diff linguist-generated
+next-env.d.ts       linguist-generated
