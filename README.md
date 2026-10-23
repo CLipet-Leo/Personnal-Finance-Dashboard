@@ -6,23 +6,28 @@ Usage strictement individuel — pas de multi-utilisateurs, pas d'authentificati
 
 ## Stack
 
-| Domaine    | Choix                                                        |
-| ---------- | ------------------------------------------------------------ |
-| Framework  | Next.js 16 (App Router, React 19, Server Components)         |
-| Langage    | TypeScript                                                   |
+| Domaine    | Choix                                                          |
+| ---------- | -------------------------------------------------------------- |
+| Framework  | Next.js 16 (App Router, React 19, Server Components)           |
+| Langage    | TypeScript                                                     |
 | UI         | Tailwind CSS v4 + shadcn/ui (base `lyra`, Base UI, Phosphor) |
 | Graphiques | Recharts, via les composants `chart` de shadcn/ui            |
-| Données    | SQLite (`better-sqlite3`) + Drizzle ORM                      |
+| Données   | SQLite (`better-sqlite3`) + Drizzle ORM                      |
 
 ## Fonctionnalités
 
-- **Vue d'ensemble** — entrées, sorties, solde net et nombre d'opérations non pointées sur la période choisie (mois en cours, mois précédent ou plage personnalisée).
-- **Visualisations** — évolution quotidienne des entrées/sorties, répartition des dépenses par catégorie avec drill-down par sous-catégorie.
-- **Table d'audit** — tri par date, libellé, catégorie ou montant ; filtres par catégorie, sous-catégorie et statut de pointage ; recherche plein texte sur les libellés ; pagination.
-- **Import CSV** — dépôt par glisser-déposer, déduplication automatique, réimport du même fichier sans effet de bord.
-- **Réinitialisation** — vidage de la base depuis l'interface ou en ligne de commande.
+Tout tient sur une seule page ; import, règles de tag et détail d'une opération s'ouvrent en panneau latéral.
 
-L'état des filtres et de la période vit dans l'URL : les pages restent des Server Components et chaque vue est partageable.
+- **Indicateurs** — entrées, sorties, solde net et opérations à pointer sur la période (ce mois, mois dernier, 3 mois, 12 mois, tout l'historique ou plage libre), avec variation par rapport à la période précédente équivalente, taux d'épargne et dépense moyenne par jour. Cliquer une carte filtre la table.
+- **Trésorerie** — solde cumulé, flux quotidiens ou 12 derniers mois (avec moyenne des sorties) ; cliquer un mois bascule la période dessus.
+- **Dépenses par catégorie** — part de chaque catégorie, drill-down par sous-catégorie ; le clic filtre aussi la table.
+- **Plus grosses dépenses** et **postes récurrents** (moyenne mensuelle par tag sur tout l'historique).
+- **Table d'audit** — tri, filtres (sens, catégorie, sous-catégorie, pointage, tag), recherche plein texte, pagination ; clic sur une ligne pour le détail complet et la création d'une règle de tag.
+- **Tags personnels** — règles « le libellé contient X → tag » (loyer, abonnements…). Le tag est calculé à la lecture : les règles s'appliquent à tout l'historique et survivent aux réimports.
+- **Import CSV** — dépôt par glisser-déposer, déduplication automatique, réimport du même fichier sans effet de bord.
+- **Réinitialisation** — vidage de la base depuis le panneau d'import ou en ligne de commande.
+
+L'état des filtres et de la période vit dans l'URL : la page reste un Server Component et chaque vue est partageable.
 
 ## Prérequis
 
@@ -43,17 +48,18 @@ Le dossier `data/` est ignoré par Git : la base et les relevés restent stricte
 
 ## Scripts
 
-| Commande           | Description                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `pnpm dev`         | Serveur de développement                                           |
-| `pnpm build`       | Build de production                                                |
-| `pnpm start`       | Serveur de production                                              |
-| `pnpm lint`        | ESLint                                                             |
-| `pnpm format`      | Prettier sur tout le projet                                        |
-| `pnpm db:generate` | Génère une migration à partir de `src/db/schema.ts`                |
-| `pnpm db:migrate`  | Applique les migrations en attente                                 |
-| `pnpm db:import`   | Importe un CSV en ligne de commande (`data/source.csv` par défaut) |
-| `pnpm db:reset`    | Vide la table `transactions` (`--yes` pour sauter la confirmation) |
+| Commande             | Description                                                            |
+| -------------------- | ---------------------------------------------------------------------- |
+| `pnpm dev`         | Serveur de développement                                                 |
+| `pnpm build`       | Build de production                                                      |
+| `pnpm start`       | Serveur de production                                                    |
+| `pnpm lint`        | ESLint                                                                   |
+| `pnpm format`      | Prettier sur tout le projet                                              |
+| `pnpm db:generate` | Génère une migration à partir de `src/db/schema.ts`                      |
+| `pnpm db:migrate`  | Applique les migrations en attente                                       |
+| `pnpm db:import`   | Importe un CSV en ligne de commande (`data/source.csv` par défaut)       |
+| `pnpm db:reset`    | Vide la table `transactions` (`--yes` pour sauter la confirmation)       |
+| `pnpm shadcn`      | Permet l'ajout d'un composant shadcn ui depuis un registre               |
 
 ## Format CSV attendu
 
@@ -78,11 +84,11 @@ Ce rang permet de conserver deux opérations réellement identiques le même jou
 ```
 src/
   app/
-    page.tsx              Dashboard (Server Component)
-    import/page.tsx       Page d'import et de réinitialisation
-    actions/              Server Actions (import CSV, reset)
+    page.tsx              Dashboard, unique page (Server Component)
+    actions/              Server Actions (import CSV, reset, règles de tag)
   components/
-    dashboard/            Cards, graphiques, filtres, table d'audit
+    dashboard/            Cards, graphiques, filtres, table d'audit, panneaux
+    import-sheet.tsx      Panneau d'import et de réinitialisation
     ui/                   Composants shadcn/ui
   db/
     schema.ts             Schéma Drizzle
@@ -90,7 +96,7 @@ src/
   hooks/                  Synchronisation des filtres avec l'URL
   lib/                    Période, formats fr-FR, utilitaires
   services/               Requêtes SQL agrégées et parsing CSV
-scripts/                  Import et reset en ligne de commande
+scripts/                  Import, reset et vérifications (`pnpm tsx scripts/check-tags.ts`, `check-period.ts`)
 data/                     Base SQLite et relevés (non versionnés)
 ```
 

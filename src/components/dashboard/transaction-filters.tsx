@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useQueryParams } from '@/hooks/use-query-params'
-import type { FilterOptions, ReconciledFilter } from '@/services/DBService'
+import type { FilterOptions, FlowFilter, ReconciledFilter } from '@/services/DBService'
 
 const STATUS_ITEMS = [
   { label: 'Tous les statuts', value: null },
@@ -22,23 +23,40 @@ const STATUS_ITEMS = [
   { label: 'Non pointées', value: 'pending' }
 ]
 
+const FLOW_ITEMS = [
+  { label: 'Tout', value: 'all' },
+  { label: 'Entrées', value: 'in' },
+  { label: 'Sorties', value: 'out' }
+]
+
 export function TransactionFilters({
   options,
   search,
   category,
   subcategory,
-  status
+  status,
+  flow,
+  tags,
+  selectedTags
 }: {
   options: FilterOptions
   search: string
   category: string
   subcategory: string
   status: ReconciledFilter
+  flow: FlowFilter
+  tags: string[]
+  selectedTags: string[]
 }) {
   const { setParams } = useQueryParams()
   const [draftSearch, setDraftSearch] = useState(search)
+  const [syncedSearch, setSyncedSearch] = useState(search)
 
-  useEffect(() => setDraftSearch(search), [search])
+  // La recherche peut venir d'ailleurs (top dépenses, fiche transaction) : on resynchronise au rendu.
+  if (search !== syncedSearch) {
+    setSyncedSearch(search)
+    setDraftSearch(search)
+  }
 
   // Debounce : on ne veut pas une navigation serveur par frappe clavier.
   useEffect(() => {
@@ -61,7 +79,9 @@ export function TransactionFilters({
     ...subcategorySource.map((value) => ({ label: value, value }))
   ]
 
-  const hasFilters = Boolean(search || category || subcategory || status !== 'all')
+  const hasFilters = Boolean(
+    search || category || subcategory || status !== 'all' || flow !== 'all' || selectedTags.length
+  )
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -75,6 +95,23 @@ export function TransactionFilters({
           aria-label="Rechercher dans les libellés"
         />
       </div>
+
+      <ToggleGroup
+        className="flex-wrap"
+        variant="outline"
+        size="sm"
+        value={[flow]}
+        onValueChange={(value: string[]) =>
+          value[0] && setParams({ flow: value[0] === 'all' ? null : value[0], page: null })
+        }
+        aria-label="Sens des opérations"
+      >
+        {FLOW_ITEMS.map((item) => (
+          <ToggleGroupItem key={item.value} value={item.value}>
+            {item.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
 
       <Select
         items={categoryItems}
@@ -135,12 +172,50 @@ export function TransactionFilters({
         </SelectContent>
       </Select>
 
+      {/* Rien à filtrer tant qu'aucune règle n'existe : on n'encombre pas la barre. */}
+      {tags.length > 0 && (
+        <Select
+          multiple
+          value={selectedTags}
+          onValueChange={(value) => setParams({ tag: value as string[], page: null })}
+        >
+          <SelectTrigger className="w-44" aria-label="Filtrer par tags">
+            <SelectValue>
+              {(value: string[]) =>
+                value.length === 0
+                  ? 'Tous les tags'
+                  : value.length === 1
+                    ? value[0]
+                    : `${value.length} tags`
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {tags.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+
       {hasFilters && (
         <Button
           variant="ghost"
           size="sm"
           onClick={() =>
-            setParams({ q: null, category: null, subcategory: null, status: null, page: null })
+            setParams({
+              q: null,
+              category: null,
+              subcategory: null,
+              status: null,
+              flow: null,
+              tag: null,
+              page: null
+            })
           }
         >
           <XIcon data-icon="inline-start" />

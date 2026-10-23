@@ -1,7 +1,22 @@
-import { and, asc, count, desc, eq, gte, like, lt, lte, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  gt,
+  gte,
+  inArray,
+  like,
+  lt,
+  lte,
+  or,
+  sql
+} from 'drizzle-orm'
 
 import { db, type SQLiteDB } from '@/db'
-import { transactions, type Transaction } from '@/db/schema'
+import { tagRules, transactions, type TagRule, type Transaction } from '@/db/schema'
 import type { DateRange } from '@/lib/period'
 
 /* -------------------------------------------------------------------------- */
@@ -14,6 +29,17 @@ const netSum = sql<number>`coalesce(sum(${transactions.amount}), 0)`
 
 const categoryLabel = sql<string>`coalesce(nullif(${transactions.category}, ''), 'Non catégorisé')`
 const subcategoryLabel = sql<string>`coalesce(nullif(${transactions.subcategory}, ''), 'Non renseignée')`
+
+/**
+ * Tag d'une transaction : la plus ancienne règle dont le pattern apparaît dans un
+ * des libellés. LIKE est insensible à la casse (ASCII) en SQLite.
+ * ponytail: sous-requête corrélée évaluée par ligne, suffisant pour quelques
+ * milliers d'opérations ; matérialiser une colonne `tag` si ça devient lent.
+ */
+const ruleMatches = sql`(${transactions.shortLabel} like '%' || ${tagRules.pattern} || '%' or ${transactions.fullLabel} like '%' || ${tagRules.pattern} || '%')`
+const tagLabel = sql<
+  string | null
+>`(select ${tagRules.tag} from ${tagRules} where ${ruleMatches} order by ${tagRules.id} limit 1)`
 
 function inRange(range: DateRange) {
   return and(
@@ -32,6 +58,7 @@ export const SORT_COLUMNS = {
 export type SortColumn = keyof typeof SORT_COLUMNS
 export type SortDirection = 'asc' | 'desc'
 export type ReconciledFilter = 'all' | 'reconciled' | 'pending'
+export type FlowFilter = 'all' | 'in' | 'out'
 
 export type PeriodSummary = {
   credits: number
@@ -43,6 +70,13 @@ export type PeriodSummary = {
 
 export type DailyFlow = {
   date: string
+  credits: number
+  debits: number
+  net: number
+}
+
+export type MonthlyFlow = {
+  month: string // yyyy-mm
   credits: number
   debits: number
   net: number
@@ -60,15 +94,21 @@ export type TransactionQuery = {
   category?: string
   subcategory?: string
   status?: ReconciledFilter
+  flow?: FlowFilter
+  tags?: string[]
   sort?: SortColumn
   dir?: SortDirection
   page?: number
   pageSize?: number
 }
 
+export type TransactionRow = Transaction & { tag: string | null }
+
 export type TransactionPage = {
-  rows: Transaction[]
+  rows: TransactionRow[]
   total: number
+  /** Sommes sur toutes les opérations filtrées, pas seulement la page affichée. */
+  sums: { credits: number; debits: number; net: number }
   page: number
   pageCount: number
   pageSize: number
@@ -78,6 +118,15 @@ export type FilterOptions = {
   category: string
   subcategories: string[]
 }[]
+
+export type TagRuleWithMatches = TagRule & { matches: number }
+
+export type TagSummary = {
+  tag: string
+  transactionCount: number
+  total: number
+  monthlyAverage: number
+}
 
 export type DatasetInfo = {
   total: number
@@ -115,6 +164,16 @@ export class DBService {
       .where(inRange(range))
       .groupBy(transactions.accountingDate)
       .orderBy(asc(transactions.accountingDate))
+  }
+
+  async getMonthlyFlow(range: DateRange): Promise<MonthlyFlow[]> {
+    const month = sql<string>`substr(${transactions.accountingDate}, 1, 7)`
+    return this.db
+      .select({ month, credits: creditsSum, debits: debitsSum, net: netSum })
+      .from(transactions)
+      .where(inRange(range))
+      .groupBy(month)
+      .orderBy(asc(month))
   }
 
   /**
@@ -177,25 +236,31 @@ export class DBService {
     if (query.status === 'reconciled') conditions.push(eq(transactions.reconciled, true))
     if (query.status === 'pending')
       conditions.push(sql`coalesce(${transactions.reconciled}, 0) = 0`)
+    if (query.flow === 'in') conditions.push(gt(transactions.amount, 0))
+    if (query.flow === 'out') conditions.push(lt(transactions.amount, 0))
+    if (query.tags?.length) conditions.push(inArray(tagLabel, query.tags))
 
     const where = and(...conditions)
     const orderColumn = SORT_COLUMNS[sort]
     const order = dir === 'asc' ? asc(orderColumn) : desc(orderColumn)
 
-    const [{ total }] = await this.db.select({ total: count() }).from(transactions).where(where)
+    const [{ total, ...sums }] = await this.db
+      .select({ total: count(), credits: creditsSum, debits: debitsSum, net: netSum })
+      .from(transactions)
+      .where(where)
 
     const pageCount = Math.max(1, Math.ceil(total / pageSize))
     const page = Math.min(Math.max(1, query.page ?? 1), pageCount)
 
     const rows = await this.db
-      .select()
+      .select({ ...getTableColumns(transactions), tag: tagLabel })
       .from(transactions)
       .where(where)
       .orderBy(order, desc(transactions.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize)
 
-    return { rows, total, page, pageCount, pageSize }
+    return { rows, total, sums, page, pageCount, pageSize }
   }
 
   async getFilterOptions(): Promise<FilterOptions> {
@@ -215,6 +280,44 @@ export class DBService {
       category,
       subcategories
     }))
+  }
+
+  async getTags(): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ tag: tagRules.tag })
+      .from(tagRules)
+      .orderBy(asc(tagRules.tag))
+    return rows.map((row) => row.tag)
+  }
+
+  /** Nombre de transactions contenant le pattern, indépendamment des autres règles. */
+  async getTagRules(): Promise<TagRuleWithMatches[]> {
+    return this.db
+      .select({
+        ...getTableColumns(tagRules),
+        matches: sql<number>`(select count(*) from ${transactions} where ${ruleMatches})`
+      })
+      .from(tagRules)
+      .orderBy(asc(tagRules.tag), asc(tagRules.id))
+  }
+
+  /**
+   * Moyenne mensuelle sur tous les mois présents en base, pas seulement ceux où le
+   * tag apparaît : un abonnement sauté un mois fait baisser la moyenne.
+   */
+  async getTagSummaries(): Promise<TagSummary[]> {
+    const [{ months }] = await this.db
+      .select({ months: sql<number>`count(distinct substr(${transactions.accountingDate}, 1, 7))` })
+      .from(transactions)
+
+    const rows = await this.db
+      .select({ tag: sql<string>`${tagLabel}`, transactionCount: count(), total: netSum })
+      .from(transactions)
+      .where(sql`${tagLabel} is not null`)
+      .groupBy(tagLabel)
+      .orderBy(asc(netSum))
+
+    return rows.map((row) => ({ ...row, monthlyAverage: months ? row.total / months : 0 }))
   }
 
   async getDatasetInfo(): Promise<DatasetInfo> {
