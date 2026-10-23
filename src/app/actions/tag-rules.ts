@@ -2,7 +2,6 @@
 
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 import { db } from '@/db'
 import { tagRules } from '@/db/schema'
@@ -15,8 +14,6 @@ export async function createTagRuleAction(formData: FormData) {
   await db.insert(tagRules).values({ tag, pattern })
 
   revalidatePath('/')
-  // Redirection sans query string : vide le motif pré-rempli depuis la table.
-  redirect('/tags')
 }
 
 export async function deleteTagRuleAction(formData: FormData) {
@@ -26,5 +23,4 @@ export async function deleteTagRuleAction(formData: FormData) {
   await db.delete(tagRules).where(eq(tagRules.id, id))
 
   revalidatePath('/')
-  revalidatePath('/tags')
 }

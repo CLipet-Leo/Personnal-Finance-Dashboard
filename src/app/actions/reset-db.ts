@@ -9,7 +9,6 @@ export async function resetTransactionsAction() {
   const deleted = await db.delete(transactions).returning({ id: transactions.id })
 
   revalidatePath('/')
-  revalidatePath('/import')
 
   return { deleted: deleted.length }
 }

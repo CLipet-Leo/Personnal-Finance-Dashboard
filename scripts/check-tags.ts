@@ -35,10 +35,14 @@ async function main() {
   const service = new DBService(db)
   const range = { from: '2026-01-01', to: '2026-12-31' }
 
-  const loyer = await service.getTransactions({ range, tag: 'Loyer' })
+  const loyer = await service.getTransactions({ range, tags: ['Loyer'] })
   assert.equal(loyer.total, 2)
   assert.ok(loyer.rows.every((row) => row.tag === 'Loyer'))
-  assert.equal((await service.getTransactions({ range, tag: 'Autre' })).total, 0)
+  assert.equal((await service.getTransactions({ range, tags: ['Autre'] })).total, 0)
+
+  const several = await service.getTransactions({ range, tags: ['Loyer', 'Abonnements'] })
+  assert.equal(several.total, 3)
+  assert.equal(several.sums.net, -1614)
 
   const summaries = await service.getTagSummaries()
   // 3 mois présents en base : 1600 / 3 pour le loyer.

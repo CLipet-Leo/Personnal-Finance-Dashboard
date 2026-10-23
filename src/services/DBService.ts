@@ -5,7 +5,9 @@ import {
   desc,
   eq,
   getTableColumns,
+  gt,
   gte,
+  inArray,
   like,
   lt,
   lte,
@@ -56,6 +58,7 @@ export const SORT_COLUMNS = {
 export type SortColumn = keyof typeof SORT_COLUMNS
 export type SortDirection = 'asc' | 'desc'
 export type ReconciledFilter = 'all' | 'reconciled' | 'pending'
+export type FlowFilter = 'all' | 'in' | 'out'
 
 export type PeriodSummary = {
   credits: number
@@ -67,6 +70,13 @@ export type PeriodSummary = {
 
 export type DailyFlow = {
   date: string
+  credits: number
+  debits: number
+  net: number
+}
+
+export type MonthlyFlow = {
+  month: string // yyyy-mm
   credits: number
   debits: number
   net: number
@@ -84,7 +94,8 @@ export type TransactionQuery = {
   category?: string
   subcategory?: string
   status?: ReconciledFilter
-  tag?: string
+  flow?: FlowFilter
+  tags?: string[]
   sort?: SortColumn
   dir?: SortDirection
   page?: number
@@ -96,6 +107,8 @@ export type TransactionRow = Transaction & { tag: string | null }
 export type TransactionPage = {
   rows: TransactionRow[]
   total: number
+  /** Sommes sur toutes les opérations filtrées, pas seulement la page affichée. */
+  sums: { credits: number; debits: number; net: number }
   page: number
   pageCount: number
   pageSize: number
@@ -151,6 +164,16 @@ export class DBService {
       .where(inRange(range))
       .groupBy(transactions.accountingDate)
       .orderBy(asc(transactions.accountingDate))
+  }
+
+  async getMonthlyFlow(range: DateRange): Promise<MonthlyFlow[]> {
+    const month = sql<string>`substr(${transactions.accountingDate}, 1, 7)`
+    return this.db
+      .select({ month, credits: creditsSum, debits: debitsSum, net: netSum })
+      .from(transactions)
+      .where(inRange(range))
+      .groupBy(month)
+      .orderBy(asc(month))
   }
 
   /**
@@ -213,13 +236,18 @@ export class DBService {
     if (query.status === 'reconciled') conditions.push(eq(transactions.reconciled, true))
     if (query.status === 'pending')
       conditions.push(sql`coalesce(${transactions.reconciled}, 0) = 0`)
-    if (query.tag) conditions.push(eq(tagLabel, query.tag))
+    if (query.flow === 'in') conditions.push(gt(transactions.amount, 0))
+    if (query.flow === 'out') conditions.push(lt(transactions.amount, 0))
+    if (query.tags?.length) conditions.push(inArray(tagLabel, query.tags))
 
     const where = and(...conditions)
     const orderColumn = SORT_COLUMNS[sort]
     const order = dir === 'asc' ? asc(orderColumn) : desc(orderColumn)
 
-    const [{ total }] = await this.db.select({ total: count() }).from(transactions).where(where)
+    const [{ total, ...sums }] = await this.db
+      .select({ total: count(), credits: creditsSum, debits: debitsSum, net: netSum })
+      .from(transactions)
+      .where(where)
 
     const pageCount = Math.max(1, Math.ceil(total / pageSize))
     const page = Math.min(Math.max(1, query.page ?? 1), pageCount)
@@ -232,7 +260,7 @@ export class DBService {
       .limit(pageSize)
       .offset((page - 1) * pageSize)
 
-    return { rows, total, page, pageCount, pageSize }
+    return { rows, total, sums, page, pageCount, pageSize }
   }
 
   async getFilterOptions(): Promise<FilterOptions> {

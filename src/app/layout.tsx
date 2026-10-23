@@ -1,4 +1,4 @@
-import { AppHeader } from '@/components/app-header'
+import { Toaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
@@ -26,13 +26,13 @@ export default function RootLayout({
         'antialiased',
         inter.variable,
         jetbrainsMono.variable,
-        'font-mono',
+        'font-sans',
         'dark'
       )}
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
-        <AppHeader />
         {children}
+        <Toaster position="top-center" />
       </body>
     </html>
   )

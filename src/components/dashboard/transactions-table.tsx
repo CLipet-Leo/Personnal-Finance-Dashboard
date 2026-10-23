@@ -1,10 +1,22 @@
-import { TagIcon } from '@phosphor-icons/react/ssr'
-import Link from 'next/link'
+'use client'
+
+import { FolderSimpleIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
+import { useState } from 'react'
 
 import { SortableHeader } from '@/components/dashboard/sortable-header'
+import { TagRuleForm } from '@/components/dashboard/tag-rule-form'
 import { TransactionsPagination } from '@/components/dashboard/transactions-pagination'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Separator } from '@/components/ui/separator'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import {
   Table,
   TableBody,
@@ -13,19 +25,120 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import { formatShortDate, formatSignedAmount } from '@/lib/format'
+import { useQueryParams } from '@/hooks/use-query-params'
+import { formatLongDate, formatShortDate, formatSignedAmount } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { SortColumn, SortDirection, TransactionPage } from '@/services/DBService'
+import type {
+  SortColumn,
+  SortDirection,
+  TransactionPage,
+  TransactionRow
+} from '@/services/DBService'
+
+function TransactionDetails({
+  row,
+  tags,
+  onNavigate
+}: {
+  row: TransactionRow
+  tags: string[]
+  onNavigate: (updates: Record<string, string | null>) => void
+}) {
+  const details = [
+    ['Libellé complet', row.fullLabel],
+    ['Catégorie', row.category || 'Non catégorisé'],
+    ['Sous-catégorie', row.subcategory],
+    ["Date d'opération", row.operationDate && formatLongDate(row.operationDate)],
+    ['Date de valeur', row.valueDate && formatLongDate(row.valueDate)],
+    ['Référence', row.reference],
+    ['Informations', row.additionalInfo],
+    ['Pointage', row.reconciled ? 'Pointée' : 'Non pointée']
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]))
+
+  return (
+    <>
+      <SheetHeader>
+        <SheetTitle className="pr-8">{row.shortLabel}</SheetTitle>
+        <SheetDescription>
+          {formatLongDate(row.accountingDate)}
+          {row.operationType && ` · ${row.operationType}`}
+        </SheetDescription>
+      </SheetHeader>
+      <div className="flex flex-col gap-6 overflow-y-auto px-4 pb-4">
+        <p
+          className={cn(
+            'font-heading text-3xl font-semibold tabular-nums',
+            row.amount >= 0 ? 'text-credit' : 'text-debit'
+          )}
+        >
+          {formatSignedAmount(row.amount)}
+        </p>
+
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+          {details.map(([label, value]) => (
+            <div key={label} className="contents">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="[overflow-wrap:anywhere]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onNavigate({ q: row.shortLabel, page: null })}
+          >
+            <MagnifyingGlassIcon data-icon="inline-start" />
+            Opérations similaires
+          </Button>
+          {row.category && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onNavigate({ category: row.category, subcategory: null, page: null })}
+            >
+              <FolderSimpleIcon data-icon="inline-start" />
+              Même catégorie
+            </Button>
+          )}
+        </div>
+
+        <Separator />
+
+        {row.tag ? (
+          <p className="flex items-center gap-2">
+            Tag <Badge variant="secondary">{row.tag}</Badge>
+            <span className="text-muted-foreground">attribué par une règle de libellé</span>
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="font-medium">Créer une règle de tag</p>
+            {/* key : formulaire neuf, pré-rempli, à chaque transaction ouverte. */}
+            <TagRuleForm key={row.id} tags={tags} defaultPattern={row.shortLabel} />
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
 
 export function TransactionsTable({
   result,
   sort,
-  dir
+  dir,
+  tags
 }: {
   result: TransactionPage
   sort: SortColumn
   dir: SortDirection
+  tags: string[]
 }) {
+  const { setParams } = useQueryParams()
+  // On garde l'id, pas la ligne : après création d'une règle, le tag revalidé apparaît dans la fiche.
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const selected = result.rows.find((row) => row.id === selectedId)
+
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-x-auto rounded-none border">
@@ -35,7 +148,6 @@ export function TransactionsTable({
               <SortableHeader column="date" label="Date" sort={sort} dir={dir} />
               <SortableHeader column="label" label="Libellé" sort={sort} dir={dir} />
               <SortableHeader column="category" label="Catégorie" sort={sort} dir={dir} />
-              <TableHead>Sous-catégorie</TableHead>
               <TableHead>Pointage</TableHead>
               <SortableHeader
                 column="amount"
@@ -49,7 +161,7 @@ export function TransactionsTable({
           <TableBody>
             {result.rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={5}>
                   <Empty>
                     <EmptyHeader>
                       <EmptyTitle>Aucune transaction</EmptyTitle>
@@ -62,29 +174,29 @@ export function TransactionsTable({
               </TableRow>
             ) : (
               result.rows.map((row) => (
-                <TableRow key={row.id} className="group">
+                <TableRow
+                  key={row.id}
+                  data-state={row.id === selectedId ? 'selected' : undefined}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedId(row.id)}
+                >
                   <TableCell className="whitespace-nowrap tabular-nums">
                     {formatShortDate(row.accountingDate)}
                   </TableCell>
-                  <TableCell className="max-w-xs">
+                  <TableCell className="max-w-sm">
                     <div className="flex items-center gap-2">
-                      <span className="truncate" title={row.fullLabel ?? row.shortLabel}>
+                      {/* Cible clavier de la ligne ; la souris peut cliquer n'importe où. */}
+                      <button
+                        type="button"
+                        className="truncate text-left outline-none hover:underline focus-visible:underline"
+                        title={row.fullLabel ?? row.shortLabel}
+                      >
                         {row.shortLabel}
-                      </span>
-                      {row.tag ? (
+                      </button>
+                      {row.tag && (
                         <Badge variant="secondary" className="shrink-0">
                           {row.tag}
                         </Badge>
-                      ) : (
-                        <Link
-                          href={`/tags?${new URLSearchParams({ pattern: row.shortLabel })}`}
-                          prefetch={false}
-                          className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100"
-                          aria-label={`Créer une règle de tag pour « ${row.shortLabel} »`}
-                          title="Créer une règle de tag"
-                        >
-                          <TagIcon className="size-3.5" />
-                        </Link>
                       )}
                     </div>
                     {row.operationType && (
@@ -95,8 +207,8 @@ export function TransactionsTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {row.category || 'Non catégorisé'}
+                    {row.subcategory && <span className="block text-xs">{row.subcategory}</span>}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{row.subcategory || '—'}</TableCell>
                   <TableCell>
                     <Badge variant={row.reconciled ? 'secondary' : 'outline'}>
                       {row.reconciled ? 'Pointée' : 'Non pointée'}
@@ -125,6 +237,21 @@ export function TransactionsTable({
           pageSize={result.pageSize}
         />
       )}
+
+      <Sheet open={Boolean(selected)} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <SheetContent className="sm:max-w-md">
+          {selected && (
+            <TransactionDetails
+              row={selected}
+              tags={tags}
+              onNavigate={(updates) => {
+                setSelectedId(null)
+                setParams(updates)
+              }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
