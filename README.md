@@ -6,19 +6,20 @@ Usage strictement individuel — pas de multi-utilisateurs, pas d'authentificati
 
 ## Stack
 
-| Domaine    | Choix                                                        |
-| ---------- | ------------------------------------------------------------ |
-| Framework  | Next.js 16 (App Router, React 19, Server Components)         |
-| Langage    | TypeScript                                                   |
+| Domaine    | Choix                                                          |
+| ---------- | -------------------------------------------------------------- |
+| Framework  | Next.js 16 (App Router, React 19, Server Components)           |
+| Langage    | TypeScript                                                     |
 | UI         | Tailwind CSS v4 + shadcn/ui (base `lyra`, Base UI, Phosphor) |
 | Graphiques | Recharts, via les composants `chart` de shadcn/ui            |
-| Données    | SQLite (`better-sqlite3`) + Drizzle ORM                      |
+| Données   | SQLite (`better-sqlite3`) + Drizzle ORM                      |
 
 ## Fonctionnalités
 
 - **Vue d'ensemble** — entrées, sorties, solde net et nombre d'opérations non pointées sur la période choisie (mois en cours, mois précédent ou plage personnalisée).
 - **Visualisations** — évolution quotidienne des entrées/sorties, répartition des dépenses par catégorie avec drill-down par sous-catégorie.
 - **Table d'audit** — tri par date, libellé, catégorie ou montant ; filtres par catégorie, sous-catégorie et statut de pointage ; recherche plein texte sur les libellés ; pagination.
+- **Tags personnels** — règles « le libellé contient X → tag » (loyer, abonnements…) gérées sur `/tags`, avec total et moyenne mensuelle par tag. Le tag est calculé à la lecture : les règles s'appliquent à tout l'historique et survivent aux réimports. Filtre et badge dans la table d'audit.
 - **Import CSV** — dépôt par glisser-déposer, déduplication automatique, réimport du même fichier sans effet de bord.
 - **Réinitialisation** — vidage de la base depuis l'interface ou en ligne de commande.
 
@@ -43,17 +44,18 @@ Le dossier `data/` est ignoré par Git : la base et les relevés restent stricte
 
 ## Scripts
 
-| Commande           | Description                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `pnpm dev`         | Serveur de développement                                           |
-| `pnpm build`       | Build de production                                                |
-| `pnpm start`       | Serveur de production                                              |
-| `pnpm lint`        | ESLint                                                             |
-| `pnpm format`      | Prettier sur tout le projet                                        |
-| `pnpm db:generate` | Génère une migration à partir de `src/db/schema.ts`                |
-| `pnpm db:migrate`  | Applique les migrations en attente                                 |
-| `pnpm db:import`   | Importe un CSV en ligne de commande (`data/source.csv` par défaut) |
-| `pnpm db:reset`    | Vide la table `transactions` (`--yes` pour sauter la confirmation) |
+| Commande             | Description                                                            |
+| -------------------- | ---------------------------------------------------------------------- |
+| `pnpm dev`         | Serveur de développement                                                 |
+| `pnpm build`       | Build de production                                                      |
+| `pnpm start`       | Serveur de production                                                    |
+| `pnpm lint`        | ESLint                                                                   |
+| `pnpm format`      | Prettier sur tout le projet                                              |
+| `pnpm db:generate` | Génère une migration à partir de `src/db/schema.ts`                      |
+| `pnpm db:migrate`  | Applique les migrations en attente                                       |
+| `pnpm db:import`   | Importe un CSV en ligne de commande (`data/source.csv` par défaut)       |
+| `pnpm db:reset`    | Vide la table `transactions` (`--yes` pour sauter la confirmation)       |
+| `pnpm shadcn`      | Permet l'ajout d'un composant shadcn ui depuis un registre               |
 
 ## Format CSV attendu
 
@@ -80,6 +82,7 @@ src/
   app/
     page.tsx              Dashboard (Server Component)
     import/page.tsx       Page d'import et de réinitialisation
+    tags/page.tsx         Gestion des règles de tag et récapitulatif
     actions/              Server Actions (import CSV, reset)
   components/
     dashboard/            Cards, graphiques, filtres, table d'audit
@@ -90,7 +93,7 @@ src/
   hooks/                  Synchronisation des filtres avec l'URL
   lib/                    Période, formats fr-FR, utilitaires
   services/               Requêtes SQL agrégées et parsing CSV
-scripts/                  Import et reset en ligne de commande
+scripts/                  Import, reset et vérification des tags (`pnpm tsx scripts/check-tags.ts`)
 data/                     Base SQLite et relevés (non versionnés)
 ```
 

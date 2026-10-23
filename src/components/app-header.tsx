@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button'
 
 const LINKS = [
   { href: '/', label: 'Dashboard' },
+  { href: '/tags', label: 'Tags' },
   { href: '/import', label: 'Import' }
 ]
 

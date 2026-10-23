@@ -15,6 +15,13 @@
       "when": 1785533957298,
       "tag": "0001_lively_pet_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792790739712,
+      "tag": "0002_smart_violations",
+      "breakpoints": true
     }
   ]
 }

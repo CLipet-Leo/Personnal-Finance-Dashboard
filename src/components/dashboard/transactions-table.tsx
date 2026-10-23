@@ -1,3 +1,6 @@
+import { TagIcon } from '@phosphor-icons/react/ssr'
+import Link from 'next/link'
+
 import { SortableHeader } from '@/components/dashboard/sortable-header'
 import { TransactionsPagination } from '@/components/dashboard/transactions-pagination'
 import { Badge } from '@/components/ui/badge'
@@ -59,14 +62,31 @@ export function TransactionsTable({
               </TableRow>
             ) : (
               result.rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="group">
                   <TableCell className="whitespace-nowrap tabular-nums">
                     {formatShortDate(row.accountingDate)}
                   </TableCell>
                   <TableCell className="max-w-xs">
-                    <span className="block truncate" title={row.fullLabel ?? row.shortLabel}>
-                      {row.shortLabel}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate" title={row.fullLabel ?? row.shortLabel}>
+                        {row.shortLabel}
+                      </span>
+                      {row.tag ? (
+                        <Badge variant="secondary" className="shrink-0">
+                          {row.tag}
+                        </Badge>
+                      ) : (
+                        <Link
+                          href={`/tags?${new URLSearchParams({ pattern: row.shortLabel })}`}
+                          prefetch={false}
+                          className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100"
+                          aria-label={`Créer une règle de tag pour « ${row.shortLabel} »`}
+                          title="Créer une règle de tag"
+                        >
+                          <TagIcon className="size-3.5" />
+                        </Link>
+                      )}
+                    </div>
                     {row.operationType && (
                       <span className="block truncate text-xs text-muted-foreground">
                         {row.operationType}

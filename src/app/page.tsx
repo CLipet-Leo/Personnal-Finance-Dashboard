@@ -72,16 +72,28 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const category = params.get('category') ?? ''
   const subcategory = params.get('subcategory') ?? ''
   const status = parseStatus(params.get('status'))
+  const tag = params.get('tag') ?? ''
   const sort = parseSort(params.get('sort'))
   const dir: SortDirection = params.get('dir') === 'asc' ? 'asc' : 'desc'
   const page = Number(params.get('page')) || 1
 
-  const [summary, dailyFlow, breakdown, filterOptions, transactions] = await Promise.all([
+  const [summary, dailyFlow, breakdown, filterOptions, tags, transactions] = await Promise.all([
     dbService.getPeriodSummary(range),
     dbService.getDailyFlow(range),
     dbService.getSpendingBreakdown(range),
     dbService.getFilterOptions(),
-    dbService.getTransactions({ range, search, category, subcategory, status, sort, dir, page })
+    dbService.getTags(),
+    dbService.getTransactions({
+      range,
+      search,
+      category,
+      subcategory,
+      status,
+      tag,
+      sort,
+      dir,
+      page
+    })
   ])
 
   return (
@@ -140,6 +152,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             category={category}
             subcategory={subcategory}
             status={status}
+            tags={tags}
+            tag={tag}
           />
           <TransactionsTable result={transactions} sort={sort} dir={dir} />
         </CardContent>

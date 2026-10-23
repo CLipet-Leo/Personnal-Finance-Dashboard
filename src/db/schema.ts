@@ -20,3 +20,13 @@ export const transactions = sqliteTable('transactions', {
 })
 
 export type Transaction = typeof transactions.$inferSelect
+
+// Règles de tag : « libellé contient pattern → tag ». Le tag est calculé à la
+// lecture (voir DBService), rien n'est stocké sur les transactions.
+export const tagRules = sqliteTable('tag_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tag: text('tag').notNull(),
+  pattern: text('pattern').notNull()
+})
+
+export type TagRule = typeof tagRules.$inferSelect

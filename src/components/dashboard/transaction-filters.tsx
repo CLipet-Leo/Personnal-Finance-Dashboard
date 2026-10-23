@@ -27,13 +27,17 @@ export function TransactionFilters({
   search,
   category,
   subcategory,
-  status
+  status,
+  tags,
+  tag
 }: {
   options: FilterOptions
   search: string
   category: string
   subcategory: string
   status: ReconciledFilter
+  tags: string[]
+  tag: string
 }) {
   const { setParams } = useQueryParams()
   const [draftSearch, setDraftSearch] = useState(search)
@@ -61,7 +65,12 @@ export function TransactionFilters({
     ...subcategorySource.map((value) => ({ label: value, value }))
   ]
 
-  const hasFilters = Boolean(search || category || subcategory || status !== 'all')
+  const tagItems = [
+    { label: 'Tous les tags', value: null },
+    ...tags.map((value) => ({ label: value, value }))
+  ]
+
+  const hasFilters = Boolean(search || category || subcategory || status !== 'all' || tag)
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -135,12 +144,41 @@ export function TransactionFilters({
         </SelectContent>
       </Select>
 
+      {/* Rien à filtrer tant qu'aucune règle n'existe : on n'encombre pas la barre. */}
+      {tags.length > 0 && (
+        <Select
+          items={tagItems}
+          value={tag || null}
+          onValueChange={(value) => setParams({ tag: (value as string) ?? null, page: null })}
+        >
+          <SelectTrigger className="w-44" aria-label="Filtrer par tag">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {tagItems.map((item) => (
+                <SelectItem key={item.value ?? 'all'} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+
       {hasFilters && (
         <Button
           variant="ghost"
           size="sm"
           onClick={() =>
-            setParams({ q: null, category: null, subcategory: null, status: null, page: null })
+            setParams({
+              q: null,
+              category: null,
+              subcategory: null,
+              status: null,
+              tag: null,
+              page: null
+            })
           }
         >
           <XIcon data-icon="inline-start" />
